@@ -3,23 +3,30 @@
 #include<stdlib.h>
 #include"semantic.h"
 
-char symbolTable[100][50];
+typedef struct {
+    char name[50];
+    char type[50];
+} Symbol;
+
+Symbol symbolTable[100];
 int count = 0;
 
 int exists(char *name){
     for(int i=0;i<count;i++){
-        if(strcmp(symbolTable[i],name)==0)
+        if(strcmp(symbolTable[i].name,name)==0)
             return 1;
     }
     return 0;
 }
 
-void addSymbol(char *name){
+void addSymbol(char *name, char *type){
     if(exists(name)){
         printf("\nSemantic Error: '%s' already declared\n", name);
         exit(1);
     }
-    strcpy(symbolTable[count++],name);
+    strcpy(symbolTable[count].name,name);
+    strcpy(symbolTable[count].type,type);
+    count++;
 }
 
 void checkDeclared(char *name){
@@ -32,6 +39,6 @@ void checkDeclared(char *name){
 void semanticCheck(){
     printf("\nSymbol Table:\n");
     for(int i=0;i<count;i++){
-        printf("%d : %s\n", i+1, symbolTable[i]);
+        printf("%d : %s : %s\n", i+1, symbolTable[i].name, symbolTable[i].type);
     }
 }

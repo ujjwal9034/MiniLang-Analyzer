@@ -10,7 +10,10 @@ int line = 1;
 
 int isKeyword(char *str){
     return strcmp(str,"ank")==0 ||
+           strcmp(str,"dashmlav")==0 ||
+           strcmp(str,"akshar")==0 ||
            strcmp(str,"bol")==0 ||
+           strcmp(str,"suno")==0 ||
            strcmp(str,"agar")==0 ||
            strcmp(str,"jabtak")==0 ||
            strcmp(str,"naito")==0;
@@ -65,8 +68,49 @@ Token getNextToken(){
         currentToken.line=line;
         return currentToken;
     }
-    if(ch=='='){ strcpy(currentToken.type,"ASSIGN"); strcpy(currentToken.value,"="); }
+    if(ch=='='){
+        ch = fgetc(fp);
+        if(ch=='='){
+            strcpy(currentToken.type,"EQ"); strcpy(currentToken.value,"==");
+        } else {
+            ungetc(ch,fp);
+            strcpy(currentToken.type,"ASSIGN"); strcpy(currentToken.value,"=");
+        }
+    }
+    else if(ch=='!'){
+        ch = fgetc(fp);
+        if(ch=='='){
+            strcpy(currentToken.type,"NEQ"); strcpy(currentToken.value,"!=");
+        } else {
+            ungetc(ch,fp);
+            strcpy(currentToken.type,"UNKNOWN");
+            currentToken.value[0]='!';
+            currentToken.value[1]='\0';
+        }
+    }
+    else if(ch=='<'){
+        ch = fgetc(fp);
+        if(ch=='='){
+            strcpy(currentToken.type,"LTE"); strcpy(currentToken.value,"<=");
+        } else {
+            ungetc(ch,fp);
+            strcpy(currentToken.type,"LT"); strcpy(currentToken.value,"<");
+        }
+    }
+    else if(ch=='>'){
+        ch = fgetc(fp);
+        if(ch=='='){
+            strcpy(currentToken.type,"GTE"); strcpy(currentToken.value,">=");
+        } else {
+            ungetc(ch,fp);
+            strcpy(currentToken.type,"GT"); strcpy(currentToken.value,">");
+        }
+    }
     else if(ch=='+'){ strcpy(currentToken.type,"PLUS"); strcpy(currentToken.value,"+"); }
+    else if(ch=='-'){ strcpy(currentToken.type,"MINUS"); strcpy(currentToken.value,"-"); }
+    else if(ch=='*'){ strcpy(currentToken.type,"MULT"); strcpy(currentToken.value,"*"); }
+    else if(ch=='/'){ strcpy(currentToken.type,"DIV"); strcpy(currentToken.value,"/"); }
+    else if(ch=='%'){ strcpy(currentToken.type,"MOD"); strcpy(currentToken.value,"%"); }
     else if(ch==';'){ strcpy(currentToken.type,"SEMICOLON"); strcpy(currentToken.value,";"); }
     else if(ch=='('){ strcpy(currentToken.type,"LPAREN"); strcpy(currentToken.value,"("); }
     else if(ch==')'){ strcpy(currentToken.type,"RPAREN"); strcpy(currentToken.value,")"); }
