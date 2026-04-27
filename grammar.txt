@@ -2,14 +2,17 @@ Program -> Statement*
 Statement -> Declaration
 Statement -> Assignment
 Statement -> Print
+Statement -> Input
 Statement -> If
 Statement -> While
 Declaration -> ank IDENTIFIER ;
 Assignment -> IDENTIFIER = Expression ;
 Print -> bol IDENTIFIER ;
+Input -> suno IDENTIFIER ;
 If -> agar ( Expression ) Statement naito Statement
 If -> agar ( Expression ) Statement
 While -> jabtak ( Expression ) Statement
 Expression -> IDENTIFIER
 Expression -> NUMBER
-Expression -> Expression + Expression
+Expression -> Expression Operator Expression
+Operator -> + | - | * | / | % | == | != | < | <= | > | >=

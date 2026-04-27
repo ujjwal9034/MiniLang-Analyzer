@@ -1,8 +1,2 @@
 ank a;
-a = 5;
-agar(a)
-    bol a;
-naito
-    a = 10;
-jabtak(a)
-    a = a + 1;
+suno a;

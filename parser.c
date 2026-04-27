@@ -15,15 +15,38 @@ Node* buildSimpleStmt();
 void declaration();
 void assignment();
 void printStmt();
+void inputStmt();
 void ifStmt();
 void whileStmt();
-void expression();
+Node* expression();
 
 // ERROR 
 void errorExpected(char *expected){
-    printf("\nSyntax Error at line %d : Expected %s but found '%s'\n",
-           lastLine, expected, currentToken.value);
-    printf("Syntax galat aagya baa, thik krle (line %d)\n", lastLine);
+    printf("\n\033[1;31m╔══════════════════════════════════════════╗\033[0m\n");
+    printf("\033[1;31m║           SYNTAX ERROR                   ║\033[0m\n");
+    printf("\033[1;31m╚══════════════════════════════════════════╝\033[0m\n");
+    printf("\033[1;37m  Line    :\033[0m \033[1;33m%d\033[0m\n", currentToken.line);
+    printf("\033[1;37m  Expected:\033[0m \033[1;32m%s\033[0m\n", expected);
+    printf("\033[1;37m  Found   :\033[0m \033[1;31m'%s'\033[0m\n", currentToken.value);
+
+    FILE *fp = fopen("input.txt", "r");
+    if (fp) {
+        char lineBuf[256];
+        int curr = 1;
+        while (fgets(lineBuf, sizeof(lineBuf), fp)) {
+            if (curr == currentToken.line) {
+                // Strip trailing newline for clean display
+                int len = strlen(lineBuf);
+                if (len > 0 && lineBuf[len-1] == '\n') lineBuf[len-1] = '\0';
+                printf("\033[1;37m  Source  :\033[0m \033[0;37m%s\033[0m\n", lineBuf);
+                break;
+            }
+            curr++;
+        }
+        fclose(fp);
+    }
+
+    printf("\033[1;33m  Hint    : Syntax galat ba, line %d check kara.\033[0m\n\n", currentToken.line);
     exit(1);
 }
 
@@ -50,29 +73,105 @@ void addChild(Node *parent, Node *child){
     }
 }
 
-// EXPRESSION
-void expression(){
+// FACTOR
+Node* factor(){
+    Node *left = NULL;
     if(strcmp(currentToken.type,"IDENTIFIER")==0){
         checkDeclared(currentToken.value);
+        left = createNode(currentToken.value);
         match("IDENTIFIER");
     }
     else if(strcmp(currentToken.type,"NUMBER")==0){
+        left = createNode(currentToken.value);
         match("NUMBER");
     }
+    else if(strcmp(currentToken.type,"STRING_LITERAL")==0){
+        left = createNode(currentToken.value);
+        match("STRING_LITERAL");
+    }
+    else if(strcmp(currentToken.type,"CHAR_LITERAL")==0){
+        left = createNode(currentToken.value);
+        match("CHAR_LITERAL");
+    }
+    else if(strcmp(currentToken.type,"LPAREN")==0){
+        match("LPAREN");
+        left = expression();
+        match("RPAREN");
+    }
     else{
-        errorExpected("IDENTIFIER or NUMBER");
+        errorExpected("IDENTIFIER, NUMBER, STRING, CHAR, or '('");
     }
+    return left;
+}
 
-    while(strcmp(currentToken.type,"PLUS")==0){
-        match("PLUS");
-        expression();
+// MULTIPLICATIVE EXPR
+Node* multExpr(){
+    Node *left = factor();
+    while(strcmp(currentToken.type,"MULT")==0 || strcmp(currentToken.type,"DIV")==0 || strcmp(currentToken.type,"MOD")==0){
+        char opType[50]; strcpy(opType, currentToken.type);
+        char opVal[50]; strcpy(opVal, currentToken.value);
+        match(opType);
+        
+        Node *right = factor();
+        Node *curr = createNode(opVal);
+        addChild(curr, left);
+        addChild(curr, right);
+        left = curr;
     }
+    return left;
+}
+
+// ADDITIVE EXPR
+Node* addExpr(){
+    Node *left = multExpr();
+    while(strcmp(currentToken.type,"PLUS")==0 || strcmp(currentToken.type,"MINUS")==0){
+        char opType[50]; strcpy(opType, currentToken.type);
+        char opVal[50]; strcpy(opVal, currentToken.value);
+        match(opType);
+        
+        Node *right = multExpr();
+        Node *curr = createNode(opVal);
+        addChild(curr, left);
+        addChild(curr, right);
+        left = curr;
+    }
+    return left;
+}
+
+// EXPRESSION
+Node* expression(){
+    Node *left = addExpr();
+    while(strcmp(currentToken.type,"EQ")==0 || strcmp(currentToken.type,"NEQ")==0 ||
+          strcmp(currentToken.type,"LT")==0 || strcmp(currentToken.type,"LTE")==0 ||
+          strcmp(currentToken.type,"GT")==0 || strcmp(currentToken.type,"GTE")==0){
+        char opType[50]; strcpy(opType, currentToken.type);
+        char opVal[50]; strcpy(opVal, currentToken.value);
+        match(opType);
+        
+        Node *right = addExpr();
+        Node *curr = createNode(opVal);
+        addChild(curr, left);
+        addChild(curr, right);
+        left = curr;
+    }
+    return left;
 }
 
 // SIMPLE STATEMENT BUILDER
 Node* buildSimpleStmt(){
+    //Input
+    if(strcmp(currentToken.value,"suno")==0){
+        match("KEYWORD");
+        Node *p = createNode("Input");
+        checkDeclared(currentToken.value);
+        Node *id = createNode(currentToken.value);
+        match("IDENTIFIER");
+        match("SEMICOLON");
+        addChild(p, id);
+        return p;
+    }
     //Print
-    if(strcmp(currentToken.value,"bol")==0){
+    else if(strcmp(currentToken.value,"bol")==0){
         match("KEYWORD");
         Node *p = createNode("Print");
         checkDeclared(currentToken.value);
@@ -89,11 +188,12 @@ Node* buildSimpleStmt(){
         checkDeclared(name);
         match("IDENTIFIER");
         match("ASSIGN");
-        expression();
+        Node *expr = expression();
         match("SEMICOLON");
         Node *a = createNode("Assignment");
         Node *id = createNode(name);
         addChild(a, id);
+        addChild(a, expr);
         return a;
     }
     else{
@@ -104,10 +204,12 @@ Node* buildSimpleStmt(){
 
 // DECLARATION
 void declaration(){
+    char type[50];
+    strcpy(type, currentToken.value);
     match("KEYWORD");
     if(strcmp(currentToken.type,"IDENTIFIER")!=0)
         errorExpected("IDENTIFIER");
-    addSymbol(currentToken.value);
+    addSymbol(currentToken.value, type);
     Node *n = createNode("Declaration");
     Node *id = createNode(currentToken.value);
     match("IDENTIFIER");
@@ -122,11 +224,12 @@ void assignment(){
     checkDeclared(name);
     match("IDENTIFIER");
     match("ASSIGN");
-    expression();
+    Node *expr = expression();
     match("SEMICOLON");
     Node *n = createNode("Assignment");
     Node *id = createNode(name);
     addChild(n, id);
+    addChild(n, expr);
     addChild(root, n);
 }
 // PRINT
@@ -140,13 +243,27 @@ void printStmt(){
     addChild(n, id);
     addChild(root, n);
 }
+// INPUT
+void inputStmt(){
+    match("KEYWORD");
+    checkDeclared(currentToken.value);
+    Node *n = createNode("Input");
+    Node *id = createNode(currentToken.value);
+    match("IDENTIFIER");
+    match("SEMICOLON");
+    addChild(n, id);
+    addChild(root, n);
+}
 // IF-ELSE
 void ifStmt(){
     match("KEYWORD");
     match("LPAREN");
-    expression();
+    Node *expr = expression();
     match("RPAREN");
     Node *ifNode = createNode("If");
+    Node *condNode = createNode("Condition");
+    addChild(condNode, expr);
+    addChild(ifNode, condNode);
     Node *thenNode = buildSimpleStmt();
     addChild(ifNode, thenNode);
     if(strcmp(currentToken.value,"naito")==0){
@@ -163,9 +280,12 @@ void ifStmt(){
 void whileStmt(){
     match("KEYWORD");
     match("LPAREN");
-    expression();
+    Node *expr = expression();
     match("RPAREN");
     Node *w = createNode("While");
+    Node *condNode = createNode("Condition");
+    addChild(condNode, expr);
+    addChild(w, condNode);
     Node *body = buildSimpleStmt();
     addChild(w, body);
     addChild(root, w);
@@ -173,10 +293,14 @@ void whileStmt(){
 
 // ===== STATEMENT =====
 void statement(){
-    if(strcmp(currentToken.value,"ank")==0)
+    if(strcmp(currentToken.value,"ank")==0 || 
+       strcmp(currentToken.value,"dashmlav")==0 || 
+       strcmp(currentToken.value,"akshar")==0)
         declaration();
     else if(strcmp(currentToken.value,"bol")==0)
         printStmt();
+    else if(strcmp(currentToken.value,"suno")==0)
+        inputStmt();
     else if(strcmp(currentToken.value,"agar")==0)
         ifStmt();
     else if(strcmp(currentToken.value,"jabtak")==0)

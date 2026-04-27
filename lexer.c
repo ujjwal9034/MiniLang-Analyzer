@@ -1,6 +1,7 @@
 #include<stdio.h>
 #include<ctype.h>
 #include<string.h>
+#include<stdlib.h>
 #include"lexer.h"
 
 FILE *fp;
@@ -10,7 +11,10 @@ int line = 1;
 
 int isKeyword(char *str){
     return strcmp(str,"ank")==0 ||
+           strcmp(str,"dashmlav")==0 ||
+           strcmp(str,"akshar")==0 ||
            strcmp(str,"bol")==0 ||
+           strcmp(str,"suno")==0 ||
            strcmp(str,"agar")==0 ||
            strcmp(str,"jabtak")==0 ||
            strcmp(str,"naito")==0;
@@ -41,7 +45,9 @@ Token getNextToken(){
     if(isalpha(ch)){
         char buffer[50];
         buffer[i++]=ch;
-        while(isalnum(ch=fgetc(fp))) buffer[i++]=ch;
+        while(isalnum(ch=fgetc(fp))) {
+            if(i < 49) buffer[i++]=ch;
+        }
         buffer[i]='\0';
         ungetc(ch,fp);
 
@@ -57,7 +63,9 @@ Token getNextToken(){
     if(isdigit(ch)){
         char buffer[50];
         buffer[i++]=ch;
-        while(isdigit(ch=fgetc(fp))) buffer[i++]=ch;
+        while(isdigit(ch=fgetc(fp))) {
+            if(i < 49) buffer[i++]=ch;
+        }
         buffer[i]='\0';
         ungetc(ch,fp);
         strcpy(currentToken.type,"NUMBER");
@@ -65,8 +73,88 @@ Token getNextToken(){
         currentToken.line=line;
         return currentToken;
     }
-    if(ch=='='){ strcpy(currentToken.type,"ASSIGN"); strcpy(currentToken.value,"="); }
+    if(ch == '"'){
+        char buffer[256];
+        buffer[i++]=ch;
+        while((ch=fgetc(fp)) != EOF && ch != '"') {
+            if(i < 254) buffer[i++]=ch;
+        }
+        if(ch == '"') {
+            buffer[i++]=ch;
+        } else {
+            printf("\n\033[1;31m[!] Lexical Error at line %d:\033[0m Unclosed string literal\n", line);
+            exit(1);
+        }
+        buffer[i]='\0';
+        strcpy(currentToken.type, "STRING_LITERAL");
+        strcpy(currentToken.value, buffer);
+        currentToken.line=line;
+        return currentToken;
+    }
+    if(ch == '\''){
+        char buffer[10];
+        buffer[i++]=ch;
+        ch = fgetc(fp);
+        if(ch != EOF && ch != '\'') {
+            buffer[i++]=ch;
+            ch = fgetc(fp);
+            if(ch == '\'') {
+                buffer[i++]=ch;
+                buffer[i]='\0';
+                strcpy(currentToken.type, "CHAR_LITERAL");
+                strcpy(currentToken.value, buffer);
+                currentToken.line=line;
+                return currentToken;
+            } else {
+                ungetc(ch, fp);
+            }
+        }
+        printf("\n\033[1;31m[!] Lexical Error at line %d:\033[0m Invalid char literal\n", line);
+        exit(1);
+    }
+    if(ch=='='){
+        ch = fgetc(fp);
+        if(ch=='='){
+            strcpy(currentToken.type,"EQ"); strcpy(currentToken.value,"==");
+        } else {
+            ungetc(ch,fp);
+            strcpy(currentToken.type,"ASSIGN"); strcpy(currentToken.value,"=");
+        }
+    }
+    else if(ch=='!'){
+        ch = fgetc(fp);
+        if(ch=='='){
+            strcpy(currentToken.type,"NEQ"); strcpy(currentToken.value,"!=");
+        } else {
+            ungetc(ch,fp);
+            strcpy(currentToken.type,"UNKNOWN");
+            currentToken.value[0]='!';
+            currentToken.value[1]='\0';
+        }
+    }
+    else if(ch=='<'){
+        ch = fgetc(fp);
+        if(ch=='='){
+            strcpy(currentToken.type,"LTE"); strcpy(currentToken.value,"<=");
+        } else {
+            ungetc(ch,fp);
+            strcpy(currentToken.type,"LT"); strcpy(currentToken.value,"<");
+        }
+    }
+    else if(ch=='>'){
+        ch = fgetc(fp);
+        if(ch=='='){
+            strcpy(currentToken.type,"GTE"); strcpy(currentToken.value,">=");
+        } else {
+            ungetc(ch,fp);
+            strcpy(currentToken.type,"GT"); strcpy(currentToken.value,">");
+        }
+    }
     else if(ch=='+'){ strcpy(currentToken.type,"PLUS"); strcpy(currentToken.value,"+"); }
+    else if(ch=='-'){ strcpy(currentToken.type,"MINUS"); strcpy(currentToken.value,"-"); }
+    else if(ch=='*'){ strcpy(currentToken.type,"MULT"); strcpy(currentToken.value,"*"); }
+    else if(ch=='/'){ strcpy(currentToken.type,"DIV"); strcpy(currentToken.value,"/"); }
+    else if(ch=='%'){ strcpy(currentToken.type,"MOD"); strcpy(currentToken.value,"%"); }
     else if(ch==';'){ strcpy(currentToken.type,"SEMICOLON"); strcpy(currentToken.value,";"); }
     else if(ch=='('){ strcpy(currentToken.type,"LPAREN"); strcpy(currentToken.value,"("); }
     else if(ch==')'){ strcpy(currentToken.type,"RPAREN"); strcpy(currentToken.value,")"); }
@@ -74,6 +162,8 @@ Token getNextToken(){
         strcpy(currentToken.type,"UNKNOWN");
         currentToken.value[0]=ch;
         currentToken.value[1]='\0';
+        printf("\n\033[1;31m[!] Lexical Error at line %d:\033[0m Unrecognized character \033[1;33m'%c'\033[0m\n", line, ch);
+        exit(1);
     }
 
     currentToken.line=line;

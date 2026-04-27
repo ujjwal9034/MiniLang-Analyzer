@@ -1,0 +1,11 @@
+ank a;
+ank b;
+suno a
+suno b;
+a=a+b*10-5;
+agar(a >= 100)
+    bol a;
+naito
+    bol b;
+jabtak(a!=0)
+    a=a-1;
